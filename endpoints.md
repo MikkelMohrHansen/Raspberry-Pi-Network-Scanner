@@ -26,6 +26,10 @@ Til at fjerne en godkendt IP
     DELETE: IP adresse, MAC adresse, Description
     Den ip/mac adresse combination jeg sender forventer jeg bliver flyttet fra AprovedAdresses til UnAprovedAdresses (med description, hvis den ændres)
 
+/api/vi/dataIngress
+    POST
+Data, MAC og IP-adresser, som kommer ind fra scanner.py
+
 
 Database
     Tabel: ApprovedAdresses

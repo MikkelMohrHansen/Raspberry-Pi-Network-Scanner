@@ -1,9 +1,12 @@
 import scapy.all as scapy
 from optparse import OptionParser
+import requests
+from datetime import datetime
 
 class NetworkScanner:
-    def __init__(self, target):
+    def __init__(self, target, api_url="http://127.0.0.1:5000/dataIngression"):
         self.target = target
+        self.api_url = api_url
 
     def scan_arp(self):
         arp_request = scapy.ARP(pdst=self.target)
@@ -22,6 +25,24 @@ class NetworkScanner:
         for response in response_list:
             print(f"{response['IP']}\t\t{response['MAC']}")
         print(40 * "-")
+    
+    def send_to_api(self, response_list):
+
+        payload = {
+            "scanned_at": datetime.now().isoformat() + "Z",
+            "target": self.target,
+            "devices": response_list
+        }
+
+        try:
+            response = requests.post(self.api_url, json=payload)
+            if response.status_code == 200:
+                print("Data sent to API successfully.")
+            else:
+                print(f"Failed to send data to API: {response.status_code}")
+        except requests.RequestException as e:
+            print(f"Error sending data to API: {e}")
+
 
 def main():
     parser = OptionParser()
@@ -30,10 +51,11 @@ def main():
 
     if not options.target:
         parser.error("[-] Please specify a target IP range, use --help for more info.")
+        return  # Stop execution if no target is provided
 
     scanner = NetworkScanner(options.target)
     scan_result = scanner.scan_arp()
     scanner.display_result(scan_result)
-
+    scanner.send_to_api(scan_result)
 if __name__ == "__main__":
     main()
