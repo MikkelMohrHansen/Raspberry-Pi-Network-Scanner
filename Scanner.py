@@ -1,14 +1,19 @@
 import flask
 
+from Database import DB_Data
+from Database.DB_Data import *
+
+
 
 Scanner_bp = flask.Blueprint("Scanner", __name__)
 
 @Scanner_bp.route("/getApproved",methods=['GET'])
 def getApproved():
-    return "hello"
-@Scanner_bp.route("/getRejected", methods=['GET'])
-def getRejected():
-    return "world"
+    data = DB_Data.getApproved()
+    return flask.jsonify(data), 200
+@Scanner_bp.route("/getUnapproved", methods=['GET'])
+def getUnapproved():
+    return flask.jsonify(DB_Data.getUnapproved()), 200
 @Scanner_bp.route("/addApproved", methods=['POST'])
 def addApproved():
     return "!"
