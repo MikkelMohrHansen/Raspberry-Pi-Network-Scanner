@@ -1,8 +1,7 @@
 import scapy.all as scapy
 from optparse import OptionParser
-import requests
 from datetime import datetime
-from DB_Data import add_unapproved
+from Database.DB_Data import add_unapproved
 
 class NetworkScanner:
     def __init__(self, target):
@@ -30,8 +29,9 @@ class NetworkScanner:
         for d in response_list:
             ip = d['IP']
             mac = d['MAC']
-            add_unapproved(ip, mac)
-        print("Data inserted into UnapporovedAddresses table.")
+            if ip and mac:
+                add_unapproved(ip, mac)
+        print("Data inserted into UnapprovedAddresses table.")
 
 def main():
     parser = OptionParser()
