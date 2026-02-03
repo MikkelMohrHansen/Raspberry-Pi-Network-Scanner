@@ -2,6 +2,7 @@ import scapy.all as scapy
 from optparse import OptionParser
 import requests
 from datetime import datetime
+from DB_Data import add_unapproved
 
 class NetworkScanner:
     def __init__(self, target, api_url="http://127.0.0.1:5000/dataIngression"):
@@ -26,23 +27,12 @@ class NetworkScanner:
             print(f"{response['IP']}\t\t{response['MAC']}")
         print(40 * "-")
     
-    def send_to_api(self, response_list):
-
-        payload = {
-            "scanned_at": datetime.now().isoformat() + "Z",
-            "target": self.target,
-            "devices": response_list
-        }
-
-        try:
-            response = requests.post(self.api_url, json=payload)
-            if response.status_code == 200:
-                print("Data sent to API successfully.")
-            else:
-                print(f"Failed to send data to API: {response.status_code}")
-        except requests.RequestException as e:
-            print(f"Error sending data to API: {e}")
-
+    def send_to_db(self, response_list):
+        for d in response_list:
+            ip = d['IP']
+            mac = d['MAC']
+            add_unapproved(ip, mac)
+        print("Data inserted into UnapporovedAddresses table.")
 
 def main():
     parser = OptionParser()
@@ -56,6 +46,6 @@ def main():
     scanner = NetworkScanner(options.target)
     scan_result = scanner.scan_arp()
     scanner.display_result(scan_result)
-    scanner.send_to_api(scan_result)
+    scanner.send_to_db(scan_result)
 if __name__ == "__main__":
     main()
