@@ -5,9 +5,8 @@ from datetime import datetime
 from DB_Data import add_unapproved
 
 class NetworkScanner:
-    def __init__(self, target, api_url="http://127.0.0.1:5000/dataIngression"):
+    def __init__(self, target):
         self.target = target
-        self.api_url = api_url
 
     def scan_arp(self):
         arp_request = scapy.ARP(pdst=self.target)
