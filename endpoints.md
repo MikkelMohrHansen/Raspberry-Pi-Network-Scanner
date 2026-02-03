@@ -33,9 +33,9 @@ Data, MAC og IP-adresser, som kommer ind fra scanner.py
 
 Database
     Tabel: ApprovedAdresses
-        Kolonner: ID, IP adresse, MAC adresse, Description, first seen, last seen
+        Kolonner: ID, IP adresse, MAC adresse, Description, Vendor, first seen, last seen
     Tabel: UnApprovedAdresses
-        Kolonner: ID, IP adresse, MAC adresse, Description, first seen, last seen
+        Kolonner: ID, IP adresse, MAC adresse, Description, Vendor, first seen, last seen
 
 
 
