@@ -1,29 +1,61 @@
-import flask
+import scapy.all as scapy
+from optparse import OptionParser
+import requests
+from datetime import datetime
 
-from Database import DB_Data
-from Database.DB_Data import *
+class NetworkScanner:
+    def __init__(self, target, api_url="http://127.0.0.1:5000/dataIngression"):
+        self.target = target
+        self.api_url = api_url
+
+    def scan_arp(self):
+        arp_request = scapy.ARP(pdst=self.target)
+        broadcast = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
+        arp_request_broadcast = broadcast/arp_request
+        answered_list = scapy.srp(arp_request_broadcast, timeout=1, verbose=False)[0]
+
+        client_list = []
+        for response in answered_list:
+            client_dict = {"IP": response[1].psrc, "MAC": response[1].hwsrc}
+            client_list.append(client_dict)
+        return client_list
+
+    def display_result(self, response_list):
+        print(41 * "_", "\n", "IP\t\t\t\tMAC Address", "\n", 40 * "-")
+        for response in response_list:
+            print(f"{response['IP']}\t\t{response['MAC']}")
+        print(40 * "-")
+    
+    def send_to_api(self, response_list):
+
+        payload = {
+            "scanned_at": datetime.now().isoformat() + "Z",
+            "target": self.target,
+            "devices": response_list
+        }
+
+        try:
+            response = requests.post(self.api_url, json=payload)
+            if response.status_code == 200:
+                print("Data sent to API successfully.")
+            else:
+                print(f"Failed to send data to API: {response.status_code}")
+        except requests.RequestException as e:
+            print(f"Error sending data to API: {e}")
 
 
+def main():
+    parser = OptionParser()
+    parser.add_option("-t", "--target", dest="target", help="Target IP range to scan, e.g. 10.0.2.1/24")
+    (options, args) = parser.parse_args()
 
-Scanner_bp = flask.Blueprint("Scanner", __name__)
+    if not options.target:
+        parser.error("[-] Please specify a target IP range, use --help for more info.")
+        return  # Stop execution if no target is provided
 
-@Scanner_bp.route("/getApproved",methods=['GET'])
-def getApproved():
-    data = DB_Data.getApproved()
-    return flask.jsonify(data), 200
-@Scanner_bp.route("/getUnapproved", methods=['GET'])
-def getUnapproved():
-    data = DB_Data.getUnapproved()
-    return flask.jsonify(data), 200
-@Scanner_bp.route("/addApproved", methods=['POST'])
-def addApproved():
-    return "!"
-@Scanner_bp.route("/updateApproved", methods=['PUT'])
-def updateApproved():
-    return "!#¤¤"
-@Scanner_bp.route("/updateUnApproved", methods=['PUT'])
-def updateUnApproved():
-    return "!782346"
-@Scanner_bp.route("/removeApproved", methods=['DELETE'])
-def removeApproved():
-    return "removed"
+    scanner = NetworkScanner(options.target)
+    scan_result = scanner.scan_arp()
+    scanner.display_result(scan_result)
+    scanner.send_to_api(scan_result)
+if __name__ == "__main__":
+    main()
