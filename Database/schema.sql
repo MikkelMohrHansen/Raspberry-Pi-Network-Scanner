@@ -26,3 +26,10 @@ CREATE TABLE IF NOT EXISTS Users (
   username      TEXT PRIMARY KEY,
   password      TEXT
 );
+
+CREATE TABLE IF NOT EXISTS PlannedScans
+(
+  interval INTEGER NOT NULL PRIMARY KEY,
+  last_scanned_at DATETIME ,
+  next_scan_at DATETIME 
+)

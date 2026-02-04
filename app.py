@@ -1,7 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from Endpoints.user import user_bp
-from Endpoints.ScannerEndpoints import Scanner_bp
+from Endpoints.DB_endpoints import DB_bp
+from scanner_Endboints import Scanner_bp
 
 app = Flask(__name__)
 
@@ -20,6 +21,7 @@ def home():
     return "Api Køre"
 
 app.register_blueprint(user_bp, url_prefix="/api/v1/")
+app.register_blueprint(DB_bp, url_prefix="/api/v1/")
 app.register_blueprint(Scanner_bp, url_prefix="/api/v1/")
 
 @app.post("/dataIngression")
