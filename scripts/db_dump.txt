@@ -3,18 +3,27 @@
 (empty)
 
 === TABLE: PlannedScans ===
-
-Row 1:
-  interval: 5
-  last_scanned_at: None
-  next_scan_at: 2026-02-04 21:50:45
-  scan_target: 10.27.64.0/24
-
-=== TABLE: UnApprovedAddresses ===
 (empty)
 
-=== TABLE: Users ===
+=== TABLE: UnApprovedAddresses ===
 
 Row 1:
-  username: admin
-  password: scrypt:32768:8:1$XNWd8ZbYFJemim3C$9215080c2a44b182d5809818156fe2c7ff71f24c25b9e4608d8f027ddf8243424f6a205e67db762bf486dafbd3d2fa7ef850e74dd2c24ca8afb8b4d69c2f38b9
+  id: 1
+  mac_address: 80:ab:4d:73:4a:b1
+  ip_address: 192.168.1.1
+  description: None
+  vendor: Nokia Solutions and Networks GmbH & Co. KG
+  first_seen: 2026-02-05 17:19:02
+  last_seen: 2026-02-05 17:19:02
+
+Row 2:
+  id: 2
+  mac_address: 08:bf:b8:3d:ec:43
+  ip_address: 192.168.1.64
+  description: None
+  vendor: ASUSTek COMPUTER INC.
+  first_seen: 2026-02-05 17:19:02
+  last_seen: 2026-02-05 17:19:02
+
+=== TABLE: Users ===
+(empty)

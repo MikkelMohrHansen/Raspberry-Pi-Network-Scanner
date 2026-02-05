@@ -61,7 +61,6 @@ def add_unapproved(
     ip_address: str,
     description: str | None = None,
     vendor: str | None = None,
-    randomized: bool | None = None,
     first_seen: str | None = None,
     last_seen: str | None = None,
 ) -> None:
@@ -75,28 +74,33 @@ def add_unapproved(
     fs = first_seen or _now_sqlite()
     ls = last_seen or _now_sqlite()
 
+    # ✅ NYT: Hvis den allerede er approved, så opdater kun last_seen dér og stop.
+    approved_rows = get_approved()
+    is_approved = any(
+        (str(r.get("mac_address", "")).strip().lower() == mac)
+        and (str(r.get("ip_address", "")).strip() == ip)
+        for r in approved_rows
+    )
+
+    if is_approved:
+        update_approved(mac_address=mac, ip_address=ip, last_seen=ls)
+        return
+
+    # ✅ ellers: normal unapproved upsert som før
     _run(
         """
         INSERT INTO UnApprovedAddresses
-        (mac_address, ip_address, description, vendor, randomized, first_seen, last_seen)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        (mac_address, ip_address, description, vendor, first_seen, last_seen)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(mac_address, ip_address) DO UPDATE SET
           description = COALESCE(excluded.description, UnApprovedAddresses.description),
           vendor      = COALESCE(excluded.vendor,      UnApprovedAddresses.vendor),
-          randomized  = COALESCE(excluded.randomized,  UnApprovedAddresses.randomized),
           first_seen  = COALESCE(UnApprovedAddresses.first_seen, excluded.first_seen),
           last_seen   = excluded.last_seen
         """,
-        (
-            mac,
-            ip,
-            description,
-            vendor,
-            int(randomized) if randomized is not None else None,
-            fs,
-            ls,
-        ),
+        (mac, ip, description, vendor, fs, ls),
     )
+
 
 def add_approved(
     mac_address: str,
@@ -127,6 +131,11 @@ def add_approved(
           last_seen   = excluded.last_seen
         """,
         (mac, ip, description, vendor, fs, ls),
+    )
+    
+    _run(
+        "DELETE FROM UnApprovedAddresses WHERE mac_address = ? AND ip_address = ?",
+        (mac, ip),
     )
 
 

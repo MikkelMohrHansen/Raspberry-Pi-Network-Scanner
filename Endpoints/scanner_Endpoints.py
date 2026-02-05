@@ -13,8 +13,26 @@ def _json():
 @Scanner_bp.post("/StartScan")
 @jwt_required()
 def start_scan():
-    scanner.main()
-    return jsonify({"ok": True, "message": "Scan started"}), 200
+    data = request.get_json(silent=True) or {}
+
+    target = data.get("scan_target")
+    if not target:
+        return jsonify({
+            "ok": False,
+            "error": "scan_target is required"
+        }), 400
+
+    try:
+        scanner.run_scan(target)
+        return jsonify({
+            "ok": True,
+            "message": f"Scan started for {target}"
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
 
 
 @Scanner_bp.post("/planScan")

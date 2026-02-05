@@ -5,9 +5,12 @@ from optparse import OptionParser
 from mac_vendor_lookup import MacLookup
 from Database.DB_Data import add_unapproved
 
-def is_randomized_mac(mac):
+
+def is_randomized_mac(mac: str) -> bool:
+    # Locally administered MAC (U/L bit = 1)
     first_byte = int(mac.split(":")[0], 16)
     return bool(first_byte & 0b00000010)
+
 
 class NetworkScanner:
     def __init__(self, target):
@@ -18,7 +21,10 @@ class NetworkScanner:
         except Exception:
             self.lookup.update_vendors()
 
-    def get_vendor(self, mac):
+    def get_vendor(self, mac: str) -> str:
+        if is_randomized_mac(mac):
+            return "Random"
+
         try:
             return self.lookup.lookup(mac)
         except Exception:
@@ -36,39 +42,42 @@ class NetworkScanner:
                 "IP": r.psrc,
                 "MAC": mac,
                 "VENDOR": self.get_vendor(mac),
-                "RANDOMIZED": is_randomized_mac(mac)
             })
         return results
 
     def display_result(self, results):
-        print("_" * 100)
-        print("IP\t\t\tMAC Address\t\tVendor\t\tRandomized")
-        print("-" * 100)
+        print("_" * 80)
+        print("IP\t\t\tMAC Address\t\tVendor")
+        print("-" * 80)
         for r in results:
-            print(f"{r['IP']}\t\t{r['MAC']}\t{r['VENDOR']}\t{r['RANDOMIZED']}")
-        print("-" * 100)
+            print(f"{r['IP']}\t\t{r['MAC']}\t{r['VENDOR']}")
+        print("-" * 80)
 
     def send_to_db(self, results):
         for r in results:
             add_unapproved(
-                r["IP"],
-                r["MAC"],
-                r["VENDOR"],
-                r["RANDOMIZED"]
+                mac_address=r["MAC"],
+                ip_address=r["IP"],
+                vendor=r["VENDOR"],
             )
 
-def main():
+
+def run_scan(target: str) -> None:
+    scanner = NetworkScanner(target)
+    res = scanner.scan_arp()
+    scanner.display_result(res)
+    scanner.send_to_db(res)
+
+def main(argv=None):
     parser = OptionParser()
     parser.add_option("-t", "--target", dest="target")
-    (options, _) = parser.parse_args()
+    (options, _) = parser.parse_args(args=argv)
 
     if not options.target:
         parser.error("Specify target IP range")
 
-    scanner = NetworkScanner(options.target)
-    res = scanner.scan_arp()
-    scanner.display_result(res)
-    scanner.send_to_db(res)
+    run_scan(options.target)
+
 
 if __name__ == "__main__":
     main()
