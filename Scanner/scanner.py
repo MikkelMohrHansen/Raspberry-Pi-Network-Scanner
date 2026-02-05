@@ -2,51 +2,73 @@
 
 import scapy.all as scapy
 from optparse import OptionParser
-from datetime import datetime
+from mac_vendor_lookup import MacLookup
 from Database.DB_Data import add_unapproved
+
+def is_randomized_mac(mac):
+    first_byte = int(mac.split(":")[0], 16)
+    return bool(first_byte & 0b00000010)
 
 class NetworkScanner:
     def __init__(self, target):
         self.target = target
+        self.lookup = MacLookup()
+        try:
+            self.lookup.load_vendors()
+        except Exception:
+            self.lookup.update_vendors()
+
+    def get_vendor(self, mac):
+        try:
+            return self.lookup.lookup(mac)
+        except Exception:
+            return "Unknown"
 
     def scan_arp(self):
-        arp_request = scapy.ARP(pdst=self.target)
-        broadcast = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
-        arp_request_broadcast = broadcast/arp_request
-        answered_list = scapy.srp(arp_request_broadcast, timeout=1, verbose=False)[0]
+        arp = scapy.ARP(pdst=self.target)
+        ether = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
+        answered = scapy.srp(ether / arp, timeout=1, verbose=False)[0]
 
-        client_list = []
-        for response in answered_list:
-            client_dict = {"IP": response[1].psrc, "MAC": response[1].hwsrc}
-            client_list.append(client_dict)
-        return client_list
+        results = []
+        for _, r in answered:
+            mac = r.hwsrc
+            results.append({
+                "IP": r.psrc,
+                "MAC": mac,
+                "VENDOR": self.get_vendor(mac),
+                "RANDOMIZED": is_randomized_mac(mac)
+            })
+        return results
 
-    def display_result(self, response_list):
-        print(41 * "_", "\n", "IP\t\t\t\tMAC Address", "\n", 40 * "-")
-        for response in response_list:
-            print(f"{response['IP']}\t\t{response['MAC']}")
-        print(40 * "-")
-    
-    def send_to_db(self, response_list):
-        for d in response_list:
-            ip = d['IP']
-            mac = d['MAC']
-            if ip and mac:
-                add_unapproved(ip, mac)
-        print("Data inserted into UnapprovedAddresses table.")
+    def display_result(self, results):
+        print("_" * 100)
+        print("IP\t\t\tMAC Address\t\tVendor\t\tRandomized")
+        print("-" * 100)
+        for r in results:
+            print(f"{r['IP']}\t\t{r['MAC']}\t{r['VENDOR']}\t{r['RANDOMIZED']}")
+        print("-" * 100)
+
+    def send_to_db(self, results):
+        for r in results:
+            add_unapproved(
+                r["IP"],
+                r["MAC"],
+                r["VENDOR"],
+                r["RANDOMIZED"]
+            )
 
 def main():
     parser = OptionParser()
-    parser.add_option("-t", "--target", dest="target", help="Target IP range to scan, e.g. 10.0.2.1/24")
-    (options, args) = parser.parse_args()
+    parser.add_option("-t", "--target", dest="target")
+    (options, _) = parser.parse_args()
 
     if not options.target:
-        parser.error("[-] Please specify a target IP range, use --help for more info.")
-        return  # Stop execution if no target is provided
+        parser.error("Specify target IP range")
 
     scanner = NetworkScanner(options.target)
-    scan_result = scanner.scan_arp()
-    scanner.display_result(scan_result)
-    scanner.send_to_db(scan_result)
+    res = scanner.scan_arp()
+    scanner.display_result(res)
+    scanner.send_to_db(res)
+
 if __name__ == "__main__":
     main()
