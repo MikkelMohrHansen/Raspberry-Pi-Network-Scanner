@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Play, Plus, Scan, File, Clock, PauseCircle, Zap, Trash2, RefreshCw } from "lucide-react";
+import { Scan, Clock, PauseCircle, Zap, Trash2, RefreshCw } from "lucide-react";
 
 const API_BASE = (import.meta?.env?.VITE_API_URL || "http://192.168.1.200:5000/api/v1").replace(/\/$/, "");
 
@@ -22,10 +22,7 @@ function Table({ columns, children }) {
         <thead className="bg-foreground/5">
           <tr>
             {columns.map((c) => (
-              <th
-                key={c}
-                className="whitespace-nowrap px-3 py-2 text-xs font-semibold text-foreground/70"
-              >
+              <th key={c} className="whitespace-nowrap px-3 py-2 text-xs font-semibold text-foreground/70">
                 {c}
               </th>
             ))}
@@ -47,8 +44,10 @@ function Td({ children, muted, colSpan }) {
 
 function Pill({ children, tone = "neutral" }) {
   const cls = useMemo(() => {
-    if (tone === "ok") return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20";
-    if (tone === "warn") return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20";
+    if (tone === "ok")
+      return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20";
+    if (tone === "warn")
+      return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20";
     if (tone === "bad") return "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20";
     return "bg-foreground/5 text-foreground/70 border-foreground/10";
   }, [tone]);
@@ -63,25 +62,16 @@ function Pill({ children, tone = "neutral" }) {
 function parseSqliteDate(value) {
   if (!value) return null;
 
-  const m = String(value).match(
-    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/
-  );
+  const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
   if (!m) return null;
 
   const [, yy, mo, dd, hh, mm, ss] = m;
-  // bygges som lokal Date-objekt (ingen browser-gæt på ISO)
-  const d = new Date(
-    Number(yy),
-    Number(mo) - 1,
-    Number(dd),
-    Number(hh),
-    Number(mm),
-    Number(ss ?? 0)
-  );
+  const d = new Date(Number(yy), Number(mo) - 1, Number(dd), Number(hh), Number(mm), Number(ss ?? 0));
 
   if (Number.isNaN(d.getTime())) return null;
   return d;
 }
+
 const DK_TZ = "Europe/Copenhagen";
 
 function formatDateTime(value) {
@@ -103,7 +93,6 @@ function fromNowLabel(value) {
   const d = parseSqliteDate(value);
   if (!d) return "—";
 
-  // beregn "nu" i DK-tid også (så labels passer)
   const now = new Date();
   const nowDkStr = new Intl.DateTimeFormat("sv-SE", {
     timeZone: DK_TZ,
@@ -144,29 +133,18 @@ async function apiJson(path, { method = "GET", body, signal } = {}) {
 }
 
 export const Scans = () => {
-  const [cidr, setCidr] = useState("10.27.64.0/24");
+  const [cidr, setCidr] = useState("192.168.1.0/24");
   const [intervalMin, setIntervalMin] = useState(30);
-  const [logsOpen, setLogsOpen] = useState(false);
 
-  const [scheduled, setScheduled] = useState([]); // PlannedScans rows
+  const [scheduled, setScheduled] = useState([]);
   const [dueCount, setDueCount] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [busyKeys, setBusyKeys] = useState(() => new Set()); // per action row busy
-
-  const [logs, setLogs] = useState(() => []);
-
-  const addLog = (msg) => {
-    const t = new Date().toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    setLogs((l) => [{ t, msg }, ...l].slice(0, 200));
-  };
+  const [busyKeys, setBusyKeys] = useState(() => new Set());
 
   const refresh = async () => {
-    const [all, due] = await Promise.all([
-      apiJson("/plannedScans/all"),
-      apiJson("/plannedScans/due"),
-    ]);
+    const [all, due] = await Promise.all([apiJson("/plannedScans/all"), apiJson("/plannedScans/due")]);
     setScheduled(Array.isArray(all) ? all : []);
     setDueCount(Array.isArray(due) ? due.length : 0);
   };
@@ -195,19 +173,6 @@ export const Scans = () => {
     });
   };
 
-  const handleStartScan = async () => {
-    try {
-      setErr("");
-      addLog(`Starter scan (server-side)`);
-      await apiJson("/StartScan", { method: "POST" });
-      addLog("Scan startet (endpoint OK)");
-      setLogsOpen(true);
-    } catch (e) {
-      setErr(e?.message || "Kunne ikke starte scan");
-      addLog(`FEJL: StartScan – ${e?.message || "ukendt fejl"}`);
-    }
-  };
-
   const handlePlanScan = async () => {
     const interval = Number(intervalMin || 1);
     const target = (cidr || "").trim();
@@ -221,78 +186,14 @@ export const Scans = () => {
       setErr("");
       setBusy(key, true);
 
-      addLog(`Planlægger scan: ${target} (hver ${interval} min)`);
-      // ✅ Frontend sender kun interval + scan_target. Backend sætter next_scan_at.
       await apiJson("/planScan", {
         method: "POST",
         body: { interval, scan_target: target },
       });
 
-      addLog("Planlagt scan oprettet");
       await refresh();
     } catch (e) {
       setErr(e?.message || "Kunne ikke planlægge scan");
-      addLog(`FEJL: planScan – ${e?.message || "ukendt fejl"}`);
-    } finally {
-      setBusy(key, false);
-    }
-  };
-
-  const handleStop = async (row) => {
-    const target = row?.scan_target;
-    const interval = row?.interval;
-    if (!target) return;
-
-    const key = `stop:${interval}|${target}`;
-
-    try {
-      setErr("");
-      setBusy(key, true);
-
-      addLog(`Stopper planlagt scan (pause): ${target}`);
-      // ✅ sender kun scan_target
-      await apiJson("/plannedScans/clearNext", {
-        method: "PUT",
-        body: { scan_target: target },
-      });
-
-      addLog("Scan pauset (next_scan_at = null)");
-      await refresh();
-    } catch (e) {
-      setErr(e?.message || "Kunne ikke stoppe scan");
-      addLog(`FEJL: clearNext – ${e?.message || "ukendt fejl"}`);
-    } finally {
-      setBusy(key, false);
-    }
-  };
-
-  const handleRunNow = async (row) => {
-    const target = row?.scan_target;
-    const interval = row?.interval;
-    if (!target) return;
-
-    const key = `run:${interval}|${target}`;
-
-    try {
-      setErr("");
-      setBusy(key, true);
-
-      addLog(`Kører scan nu: ${target}`);
-      await apiJson("/StartScan", { method: "POST" });
-
-      // ✅ Frontend sender kun scan_target.
-      // Backend sætter last_scanned_at=nu og next_scan_at=nu+interval.
-      await apiJson("/plannedScans/touch", {
-        method: "PUT",
-        body: { scan_target: target },
-      });
-
-      addLog("Scan startet + schedule opdateret (touch)");
-      await refresh();
-      setLogsOpen(true);
-    } catch (e) {
-      setErr(e?.message || "Kunne ikke køre scan nu");
-      addLog(`FEJL: RunNow – ${e?.message || "ukendt fejl"}`);
     } finally {
       setBusy(key, false);
     }
@@ -308,30 +209,32 @@ export const Scans = () => {
       setErr("");
       setBusy(key, true);
 
-      addLog(`Sletter planned scan (interval=${interval})`);
-      // ✅ sender kun interval
       await apiJson("/plannedScans/delete", {
         method: "DELETE",
         body: { interval },
       });
 
-      addLog("Planned scan slettet");
       await refresh();
     } catch (e) {
       setErr(e?.message || "Kunne ikke slette planned scan");
-      addLog(`FEJL: delete – ${e?.message || "ukendt fejl"}`);
     } finally {
       setBusy(key, false);
     }
   };
 
-  const results = [];
-
   return (
     <section className="relative min-h-screen px-4 pt-16">
       <div className="mx-auto w-full max-w-9xl">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">IP-håndtering</h2>
+
+            <div className="flex items-center gap-2">
+              {loading ? <Pill>Henter…</Pill> : null}
+              {err ? <Pill tone="bad">Fejl</Pill> : null}
+              <span className="text-xs text-foreground/60">API: {API_BASE}</span>
+            </div>
+          </div>
         <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          {/* SIDEBAR */}
           <aside className="lg:sticky lg:top-20 lg:h-[calc(80vh-5em)]">
             <div className="rounded-2xl border border-foreground/10 bg-background/70 backdrop-blur-md shadow-sm">
               {/* Brand */}
@@ -342,47 +245,19 @@ export const Scans = () => {
                 <div className="min-w-0">
                   <h1 className="text-base font-semibold leading-tight">Netværksscanner</h1>
                   <p className="text-xs text-foreground/60">
-                    Scanning • Logning • DB-Check{" "}
-                    {dueCount > 0 ? <span className="ml-2"><Pill tone="warn">{dueCount} due</Pill></span> : null}
+                    Scanning • DB-Check{" "}
+                    {dueCount > 0 ? (
+                      <span className="ml-2">
+                        <Pill tone="warn">{dueCount} due</Pill>
+                      </span>
+                    ) : null}
                   </p>
                 </div>
               </div>
 
               <div className="space-y-4 p-4">
-                {/* Quick actions */}
                 <div className="space-y-2">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground/60">
-                    Hurtige handlinger
-                  </h2>
-
                   <div className="grid gap-2">
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-foreground/10 bg-foreground/5 px-3 py-2 text-sm font-medium hover:bg-foreground/10 active:scale-[0.99]"
-                      onClick={handleStartScan}
-                    >
-                      <Play className="h-5 w-5" />
-                      Start scanning
-                    </button>
-
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-foreground/10 bg-foreground/5 px-3 py-2 text-sm font-medium hover:bg-foreground/10 active:scale-[0.99]"
-                      onClick={() => alert("TODO: Tilføj ny IP (UI kommer)")}
-                    >
-                      <Plus className="h-5 w-5" />
-                      Tilføj ny IP
-                    </button>
-
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-foreground/10 bg-foreground/5 px-3 py-2 text-sm font-medium hover:bg-foreground/10 active:scale-[0.99]"
-                      onClick={() => setLogsOpen(true)}
-                    >
-                      <File className="h-5 w-5" />
-                      Logs
-                    </button>
-
                     <button
                       type="button"
                       className="inline-flex items-center justify-center gap-2 rounded-xl border border-foreground/10 bg-foreground/5 px-3 py-2 text-sm font-medium hover:bg-foreground/10 active:scale-[0.99]"
@@ -396,30 +271,24 @@ export const Scans = () => {
 
                 {/* Settings */}
                 <div className="space-y-2">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground/60">
-                    Indstillinger
-                  </h2>
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground/60">Indstillinger</h2>
                   <label className="block">
                     <span className="mb-1 block text-xs font-medium text-foreground/70">CIDR / Range</span>
                     <input
                       value={cidr}
                       onChange={(e) => setCidr(e.target.value)}
                       className="w-full rounded-xl border border-foreground/10 bg-background px-3 py-2 text-sm outline-none ring-0 placeholder:text-foreground/40 focus:border-foreground/20 focus:outline-none"
-                      placeholder="10.27.64.0/24"
+                      placeholder="192.168.1.0/24"
                     />
                   </label>
                 </div>
 
                 {/* Schedule */}
                 <div className="space-y-2">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground/60">
-                    Planlæg Scan
-                  </h2>
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground/60">Planlæg Scan</h2>
 
                   <label className="block">
-                    <span className="mb-1 block text-xs font-medium text-foreground/70">
-                      Scan-interval (minutter)
-                    </span>
+                    <span className="mb-1 block text-xs font-medium text-foreground/70">Scan-interval (minutter)</span>
                     <div className="flex gap-2">
                       <input
                         type="number"
@@ -452,9 +321,7 @@ export const Scans = () => {
                     {err}
                   </div>
                 ) : null}
-                <div className="text-[11px] text-foreground/50">
-                  API: {API_BASE}
-                </div>
+                <div className="text-[11px] text-foreground/50">API: {API_BASE}</div>
               </div>
             </div>
           </aside>
@@ -473,7 +340,9 @@ export const Scans = () => {
                 <Table columns={["IP Range", "Interval (min)", "Næste kørsel", "Status", "Handlinger"]}>
                   {scheduled.length === 0 ? (
                     <tr>
-                      <Td muted colSpan={5}>{loading ? "Henter…" : "Ingen planlagte scans endnu."}</Td>
+                      <Td muted colSpan={5}>
+                        {loading ? "Henter…" : "Ingen planlagte scans endnu."}
+                      </Td>
                     </tr>
                   ) : (
                     scheduled.map((row) => {
@@ -500,33 +369,9 @@ export const Scans = () => {
                               "—"
                             )}
                           </Td>
+                          <Td>{isPaused ? <Pill tone="warn">Pauset</Pill> : <Pill tone="ok">Aktiv</Pill>}</Td>
                           <Td>
-                            {isPaused ? <Pill tone="warn">Pauset</Pill> : <Pill tone="ok">Aktiv</Pill>}
-                          </Td>
-                          <Td>
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                className={`inline-flex items-center gap-2 rounded-lg border border-foreground/10 bg-background px-2 py-1 text-xs hover:bg-foreground/5 ${
-                                  busy ? "opacity-60 pointer-events-none" : ""
-                                }`}
-                                onClick={() => handleRunNow(row)}
-                                title="Kør scan nu"
-                              >
-                                <Zap className="h-4 w-4" />
-                                Kør nu
-                              </button>
-
-                              <button
-                                className={`inline-flex items-center gap-2 rounded-lg border border-foreground/10 bg-background px-2 py-1 text-xs hover:bg-foreground/5 ${
-                                  busy ? "opacity-60 pointer-events-none" : ""
-                                }`}
-                                onClick={() => handleStop(row)}
-                                title="Pause (clear next_scan_at)"
-                              >
-                                <PauseCircle className="h-4 w-4" />
-                                Stop
-                              </button>
-
+                            <div className="flex justify-center">
                               <button
                                 className={`inline-flex items-center gap-2 rounded-lg border border-foreground/10 bg-background px-2 py-1 text-xs hover:bg-foreground/5 ${
                                   busy ? "opacity-60 pointer-events-none" : ""
@@ -544,83 +389,11 @@ export const Scans = () => {
                     })
                   )}
                 </Table>
-
-                <div className="mt-3 text-xs text-foreground/60">
-                  Tip: <b>Stop</b> sætter <code className="px-1">next_scan_at</code> til <code className="px-1">NULL</code>.{" "}
-                  <b>Kør nu</b> starter scan + <code className="px-1">touch</code> for at rykke schedule frem.
-                </div>
               </Card>
-
-              {/* <Card
-                title="Scan resultater (placeholder)"
-                right={<Pill tone="neutral">{results.length} fundet</Pill>}
-              >
-                <Table columns={["IP", "MAC-adresse", "Producent", "Status", "Sidst set"]}>
-                  {results.length === 0 ? (
-                    <tr>
-                      <Td muted colSpan={5}>
-                        Ingen resultater endnu (vi mangler endpoint til scan results).
-                      </Td>
-                    </tr>
-                  ) : null}
-                </Table>
-              </Card> */}
             </div>
           </main>
         </div>
       </div>
-
-      {/* LOGS MODAL */}
-      {logsOpen ? (
-        <div
-          className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setLogsOpen(false);
-          }}
-        >
-          <div className="w-full max-w-2xl rounded-2xl border border-foreground/10 bg-background shadow-xl">
-            <div className="flex items-center justify-between border-b border-foreground/10 px-4 py-3">
-              <div className="text-sm font-semibold">Logs (frontend)</div>
-              <button
-                className="rounded-lg border border-foreground/10 bg-foreground/5 px-2 py-1 text-sm hover:bg-foreground/10"
-                onClick={() => setLogsOpen(false)}
-              >
-                &times;
-              </button>
-            </div>
-
-            <div className="max-h-[60vh] overflow-auto p-4">
-              <div className="space-y-2">
-                {logs.length === 0 ? (
-                  <div className="text-sm text-foreground/60">Ingen logs endnu.</div>
-                ) : (
-                  logs.map((l, i) => (
-                    <div key={i} className="rounded-xl border border-foreground/10 bg-foreground/5 px-3 py-2 text-sm">
-                      <div className="text-xs text-foreground/60">{l.t}</div>
-                      <div className="text-foreground/80">{l.msg}</div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 border-t border-foreground/10 px-4 py-3">
-              <button
-                className="rounded-xl border border-foreground/10 bg-background px-3 py-2 text-sm hover:bg-foreground/5"
-                onClick={() => setLogs([])}
-              >
-                Ryd
-              </button>
-              <button
-                className="rounded-xl border border-foreground/10 bg-foreground/5 px-3 py-2 text-sm hover:bg-foreground/10"
-                onClick={() => setLogsOpen(false)}
-              >
-                Luk
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 };
