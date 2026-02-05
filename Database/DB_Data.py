@@ -61,6 +61,7 @@ def add_unapproved(
     ip_address: str,
     description: str | None = None,
     vendor: str | None = None,
+    randomized: bool | None = None,
     first_seen: str | None = None,
     last_seen: str | None = None,
 ) -> None:
@@ -76,17 +77,26 @@ def add_unapproved(
 
     _run(
         """
-        INSERT INTO UnApprovedAddresses (mac_address, ip_address, description, vendor, first_seen, last_seen)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO UnApprovedAddresses
+        (mac_address, ip_address, description, vendor, randomized, first_seen, last_seen)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(mac_address, ip_address) DO UPDATE SET
           description = COALESCE(excluded.description, UnApprovedAddresses.description),
           vendor      = COALESCE(excluded.vendor,      UnApprovedAddresses.vendor),
+          randomized  = COALESCE(excluded.randomized,  UnApprovedAddresses.randomized),
           first_seen  = COALESCE(UnApprovedAddresses.first_seen, excluded.first_seen),
           last_seen   = excluded.last_seen
         """,
-        (mac, ip, description, vendor, fs, ls),
+        (
+            mac,
+            ip,
+            description,
+            vendor,
+            int(randomized) if randomized is not None else None,
+            fs,
+            ls,
+        ),
     )
-
 
 def add_approved(
     mac_address: str,
