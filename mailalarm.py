@@ -7,7 +7,7 @@ MAILGUN_URL = "https://api.mailgun.net/v3/sandbox00adcd4f8fc14cb68ebba91928172f2
 MAILGUN_FROM = "Mailgun Sandbox <postmaster@sandbox00adcd4f8fc14cb68ebba91928172f20.mailgun.org>"
 MAILGUN_TO = "Owner of the network <mikkel@mohrhansen.dk>"
 
-def main():
+def send_unapproved_mail():
     api_key = os.getenv("MAILGUN_KEY")
     if not api_key:
         print("Error: MAILGUN_KEY environment variable not set.")
@@ -50,4 +50,4 @@ def main():
         raise RuntimeError(f"Failed to send email: {r.status_code} - {r.text}")
     
 if __name__ == "__main__":
-    main()
+    send_unapproved_mail()

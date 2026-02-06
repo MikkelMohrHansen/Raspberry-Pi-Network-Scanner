@@ -4,6 +4,7 @@ import scapy.all as scapy
 from optparse import OptionParser
 from mac_vendor_lookup import MacLookup
 from Database.DB_Data import add_unapproved
+from mailalarm import send_unapproved_mail()
 
 
 def is_randomized_mac(mac: str) -> bool:
@@ -60,7 +61,7 @@ class NetworkScanner:
                 ip_address=r["IP"],
                 vendor=r["VENDOR"],
             )
-
+        send_unapproved_mail()
 
 def run_scan(target: str) -> None:
     scanner = NetworkScanner(target)
