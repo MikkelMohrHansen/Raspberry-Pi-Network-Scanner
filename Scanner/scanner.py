@@ -4,7 +4,7 @@ import scapy.all as scapy
 from optparse import OptionParser
 from mac_vendor_lookup import MacLookup
 from Database.DB_Data import add_unapproved
-from mailalarm import send_unapproved_mail()
+from mailalarm import send_unapproved_mail
 
 
 def is_randomized_mac(mac: str) -> bool:
